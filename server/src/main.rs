@@ -37,7 +37,7 @@ fn main() {
                         tx.send(msg).expect("failed to sent msg to rx");
 
                     }
-                    Err(ref err) if err.kind() == ErrorKind::WouldBlock => ();
+                    Err(ref err) if err.kind() == ErrorKind::WouldBlock => (),
                     Err(_) => {
                         println!("closing connections with {}", addr);
                         break;
@@ -53,7 +53,7 @@ fn main() {
             }).collect::<Vec<_>>();
         }
 
-
+        sleep();
         }
     }
 }
