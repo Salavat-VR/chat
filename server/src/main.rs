@@ -3,9 +3,14 @@ use std::net::TcpListener;
 use std::sync::mpsc;
 use std::thread;
 
-
 const LOCAL: &str = "127.0.0.1:6000";
 const MSG_SIZE: usize = 32;
+
+fn sleep() {
+    // allow our thread to sleep and doesn't permanently run
+    thread::sleep(::std::time::Duration::from_millis(100));
+}
+
 
 
 fn main() {
@@ -14,7 +19,7 @@ fn main() {
 
     let mut clients = vec![];
 
-    let (tx,rx) = mpsc::channel::<String>();
+    let (tx, rx) = mpsc::channel::<String>();
     loop {
         if let Ok((mut socket, addr)) = server.accept() {
             println!("Client {} connected", addr);
@@ -26,19 +31,29 @@ fn main() {
 
                 match socket.read_exact(&mut buff) {
                     Ok(_) => {
-                        let msg = buff.into_iter().take_while(|&x| x!=0).collect::<Vec<_>>();
+                        let msg = buff.into_iter().take_while(|&x| x != 0).collect::<Vec<_>>();
                         let msg = String::from_utf8(msg).expect("Invalid utf8 message");
+                        println!("{} : {:?}", addr, msg);
+                        tx.send(msg).expect("failed to sent msg to rx");
 
                     }
-                    Err(_) => {}
+                    Err(ref err) if err.kind() == ErrorKind::WouldBlock => ();
+                    Err(_) => {
+                        println!("closing connections with {}", addr);
+                        break;
+                    }
                 }
-
-
-            })
+                sleep();
+            });
+        if let OK(msg) = rx.try_recv() {
+            clients = clients.into_iter().filter_map(|mut client| {
+                let mut buff = msg.clone().into_bytes();
+                buff.resize(MSG_SIZE, 0);
+                client.write_all(&buff).map(|_| client).ok()
+            }).collect::<Vec<_>>();
+        }
 
 
         }
     }
-
-
 }
